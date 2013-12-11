@@ -3,7 +3,7 @@
 
   <groupId>com.redpill-linpro.alfresco</groupId>
   <artifactId>artifact-upload-maven-plugin</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
   <name>Alfresco Artefact Upload Maven Mojo</name>
   <url>https://github.com/Redpill-Linpro/artifact-upload-maven-plugin</url>
