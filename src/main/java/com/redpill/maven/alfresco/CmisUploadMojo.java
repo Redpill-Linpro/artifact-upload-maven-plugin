@@ -51,7 +51,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 /**
- * Goal which uploads an artifact to a pre-configured CMIS repository. Does not upload the .pom file.
+ * Goal which uploads an artifact to a pre-configured CMIS repository. Does not
+ * upload the .pom file.
  */
 @Mojo(name = "upload", defaultPhase = LifecyclePhase.INSTALL, requiresProject = true)
 public class CmisUploadMojo extends AbstractMojo {
@@ -101,6 +102,9 @@ public class CmisUploadMojo extends AbstractMojo {
   @Parameter(property = "artifact", alias = "artifact", defaultValue = "${project.artifact}", required = true, readonly = true)
   private Artifact _artifact;
 
+  @Parameter(property = "artifactPath", alias = "artifactPath", required = false, readonly = true)
+  private String _artifactPath = null;
+
   /**
    * If the file can be overwritten or not
    */
@@ -113,7 +117,7 @@ public class CmisUploadMojo extends AbstractMojo {
   public void execute() throws MojoExecutionException {
     _session = createSession();
 
-    final Folder site = findSite();
+    Folder site = findSite();
 
     if (site == null) {
       getLog().warn("The site was not found.");
@@ -121,10 +125,21 @@ public class CmisUploadMojo extends AbstractMojo {
       return;
     }
 
-    final String path = site.getPath() + "/documentLibrary/" + _path;
+    String path = site.getPath() + "/documentLibrary/" + _path;
 
     try {
-      final File file = _artifact.getFile();
+      File file = _artifact.getFile();
+
+      // if the parameter artifactPath is passed, try to resolve it
+      if (StringUtils.isNotBlank(_artifactPath)) {
+        file = new File(_artifactPath);
+
+        if (!file.exists()) {
+          getLog().warn("Artifact path '" + _artifactPath + "' passed does not point to an existing file.");
+
+          return;
+        }
+      }
 
       if (file == null) {
         return;
@@ -135,55 +150,55 @@ public class CmisUploadMojo extends AbstractMojo {
         return;
       }
 
-      final Folder destinationFolder = (Folder) _session.getObjectByPath(path);
+      Folder destinationFolder = (Folder) _session.getObjectByPath(path);
 
       if (_overwrite) {
         deleteExistingFile(destinationFolder, file.getName());
       }
 
       uploadFile(path, file, destinationFolder);
-    } catch (final CmisObjectNotFoundException ex) {
+    } catch (CmisObjectNotFoundException ex) {
       getLog().error("The path to save the artifact to ('" + _path + "') is not found.", ex);
-    } catch (final FileNotFoundException ex) {
+    } catch (FileNotFoundException ex) {
       getLog().error("Could not open the file to be uploaded.", ex);
-    } catch (final CmisRuntimeException ex) {
+    } catch (CmisRuntimeException ex) {
       ex.printStackTrace();
     }
   }
 
-  private void uploadFile(final String path, final File file, final Folder destinationFolder) throws FileNotFoundException {
+  private void uploadFile(String path, File file, Folder destinationFolder) throws FileNotFoundException {
     for (int x = 0; x < 3; x++) {
       try {
-        final Map<String, Serializable> properties = new HashMap<String, Serializable>();
+        Map<String, Serializable> properties = new HashMap<String, Serializable>();
 
         properties.put(PropertyIds.NAME, file.getName());
         properties.put(PropertyIds.OBJECT_TYPE_ID, "cmis:document");
 
-        final ContentStream contentStream = new ContentStreamImpl(file.getAbsolutePath(), BigInteger.valueOf(file.length()), _mimetype, new FileInputStream(file));
+        ContentStream contentStream = new ContentStreamImpl(file.getAbsolutePath(), BigInteger.valueOf(file.length()), _mimetype, new FileInputStream(file));
 
         _session.clear();
 
-        final Document document = destinationFolder.createDocument(properties, contentStream, VersioningState.MAJOR);
+        Document document = destinationFolder.createDocument(properties, contentStream, VersioningState.MAJOR);
 
         getLog().info("Uploaded '" + file.getName() + "' to '" + path + "' with a document id of '" + document.getId() + "'");
 
         return;
-      } catch (final Exception ex) {
+      } catch (Exception ex) {
         getLog().debug("Upload failed, retrying...");
       }
     }
   }
 
-  private void deleteExistingFile(final Folder destinationFolder, final String name) {
-    final String path = destinationFolder.getPath() + "/" + name;
+  private void deleteExistingFile(Folder destinationFolder, String name) {
+    String path = destinationFolder.getPath() + "/" + name;
 
     try {
-      final Document document = (Document) _session.getObjectByPath(path);
+      Document document = (Document) _session.getObjectByPath(path);
 
       getLog().info("Deleting '" + path + "' before uploading new one.");
 
       document.deleteAllVersions();
-    } catch (final Exception ex) {
+    } catch (Exception ex) {
     }
   }
 
@@ -194,12 +209,12 @@ public class CmisUploadMojo extends AbstractMojo {
       return null;
     }
 
-    final String query = "select * from st:site as s join cm:titled as t on s.cmis:objectid=t.cmis:objectid where s.cmis:name='" + _site + "'";
+    String query = "select * from st:site as s join cm:titled as t on s.cmis:objectid=t.cmis:objectid where s.cmis:name='" + _site + "'";
 
-    final ItemIterable<QueryResult> result = _session.query(query, false);
+    ItemIterable<QueryResult> result = _session.query(query, false);
 
-    for (final QueryResult queryResult : result) {
-      final Folder site = (Folder) _session.getObject(queryResult.getPropertyById("cmis:objectId").getFirstValue().toString());
+    for (QueryResult queryResult : result) {
+      Folder site = (Folder) _session.getObject(queryResult.getPropertyById("cmis:objectId").getFirstValue().toString());
 
       return site;
     }
@@ -208,7 +223,7 @@ public class CmisUploadMojo extends AbstractMojo {
   }
 
   private Session createSession() {
-    final Map<String, String> parameter = new HashMap<String, String>();
+    Map<String, String> parameter = new HashMap<String, String>();
 
     // user credentials
     parameter.put(SessionParameter.USER, _username);
@@ -222,11 +237,11 @@ public class CmisUploadMojo extends AbstractMojo {
     parameter.put(SessionParameter.OBJECT_FACTORY_CLASS, "org.alfresco.cmis.client.impl.AlfrescoObjectFactoryImpl");
 
     // create session
-    final SessionFactory factory = SessionFactoryImpl.newInstance();
+    SessionFactory factory = SessionFactoryImpl.newInstance();
 
-    final List<Repository> repositories = factory.getRepositories(parameter);
+    List<Repository> repositories = factory.getRepositories(parameter);
 
-    final Repository repository = repositories.get(0);
+    Repository repository = repositories.get(0);
 
     return repository.createSession();
   }
