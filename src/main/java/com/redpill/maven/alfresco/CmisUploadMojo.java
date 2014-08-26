@@ -42,7 +42,7 @@ import org.apache.chemistry.opencmis.commons.enums.VersioningState;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisObjectNotFoundException;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisRuntimeException;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.ContentStreamImpl;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -209,7 +209,7 @@ public class CmisUploadMojo extends AbstractMojo {
       return null;
     }
 
-    String query = "select * from st:site as s join cm:titled as t on s.cmis:objectid=t.cmis:objectid where s.cmis:name='" + _site + "'";
+    String query = "select * from st:site as s join cm:titled as t on s.cmis:objectId=t.cmis:objectId where s.cmis:name='" + _site + "'";
 
     ItemIterable<QueryResult> result = _session.query(query, false);
 
@@ -232,9 +232,6 @@ public class CmisUploadMojo extends AbstractMojo {
     // connection settings
     parameter.put(SessionParameter.ATOMPUB_URL, _url.toExternalForm());
     parameter.put(SessionParameter.BINDING_TYPE, BindingType.ATOMPUB.value());
-
-    // Set the alfresco object factory
-    parameter.put(SessionParameter.OBJECT_FACTORY_CLASS, "org.alfresco.cmis.client.impl.AlfrescoObjectFactoryImpl");
 
     // create session
     SessionFactory factory = SessionFactoryImpl.newInstance();
